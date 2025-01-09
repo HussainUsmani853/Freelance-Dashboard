@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import clienticon from "../assets/Group 1.png";
 
-const TaskList = () => {
+const TaskList = ({ onSelectionChange, moveToInProgressModal }) => {
   const [tasks, setTasks] = useState([]);
   const [error, setError] = useState(null);
+  const [selectedTasks, setSelectedTasks] = useState([]);
 
   // Function to fetch tasks from the database
   const fetchTasks = async () => {
@@ -40,6 +41,18 @@ const TaskList = () => {
     };
   }, []);
 
+  // Function to handle checkbox change
+  const handleCheckboxChange = (task) => {
+    setSelectedTasks((prevSelected) => {
+      const isSelected = prevSelected.some((t) => t.id === task.id);
+      const updatedSelectedTasks = isSelected
+        ? prevSelected.filter((t) => t.id !== task.id)
+        : [...prevSelected, task];
+      onSelectionChange(updatedSelectedTasks); // Pass selected tasks to the parent
+      return updatedSelectedTasks;
+    });
+  };
+
   return (
     <ul>
       {error ? (
@@ -51,6 +64,12 @@ const TaskList = () => {
             className="d-flex justify-content-between p-3 task-list-card"
           >
             <div>
+              {moveToInProgressModal ? 
+              <input
+                type="checkbox"
+                checked={selectedTasks.some((t) => t.id === task.id)}
+                onChange={() => handleCheckboxChange(task)}
+              /> : ""}
               <h5 className="mb-1">{task.title}</h5>
               <div className="d-flex mt-3">
                 <div className="text-dark">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Modal from "./components/Modal";
 import TaskForm from "./components/TaskForm";
 import TaskList from "./components/TaskList";
@@ -12,6 +12,7 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 
 function App() {
   const [visibleModal, setVisibleModal] = useState(null);
+  const [selectedTasks, setSelectedTasks] = useState([]);
 
   const openModal = (modalId) => setVisibleModal(modalId);
   const closeModal = () => setVisibleModal(null);
@@ -19,6 +20,10 @@ function App() {
   const handleSave = (modalId) => {
     console.log(`Save clicked for ${modalId}`);
     closeModal(); // Close the modal after saving
+  };
+
+  const handleSelectionChange = (newSelectedTasks) => {
+    setSelectedTasks(newSelectedTasks); // Update selected tasks in the state
   };
 
   return (
@@ -37,26 +42,32 @@ function App() {
               <p id="logged-time">00:00:00</p>
               <p className="fs-5">Today Tasks</p>
               <hr />
-              <div className="inp-tasks-list">
-                <div className="row">
-                  <div className="col-md-8 d-flex align-items-center">
-                    <input
-                      type="checkbox"
-                      id="logging-tasks-1"
-                      className="inp-tasks-checkbox mx-2"
-                    />
-                    <label
-                      htmlFor="logging-tasks-1"
-                      className="logging-tasks-label"
-                    >
-                      Task Name
-                    </label>
-                  </div>
-                  <div className="col-md-4 d-flex justify-content-end">
-                    <img src={trashicon}></img>
-                  </div>
-                </div>
-              </div>
+              {selectedTasks.length > 0 ? (
+                <ul className="inp-tasks-list">
+                  {selectedTasks.map((task) => (
+                    <li key={task.id} className="row align-items-start">
+                      <div className="col-md-8 d-flex align-items-center">
+                        <input
+                          type="checkbox"
+                          id="logging-tasks-1"
+                          className="inp-tasks-checkbox mx-2"
+                        />
+                        <label
+                          htmlFor="logging-tasks-1"
+                          className="logging-tasks-label"
+                        >
+                          {task.title}
+                        </label>
+                      </div>
+                      <div className="col-md-4 d-flex justify-content-end">
+                        <img src={trashicon}></img>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No tasks selected</p>
+              )}
               <div className="d-flex justify-content-between mt-3">
                 <div className="col-md-4">
                   <button
@@ -72,7 +83,10 @@ function App() {
                     onClose={closeModal}
                     onSave={() => handleSave("moveToInProgress")}
                   >
-                    <TaskList />
+                    <TaskList 
+                      onSelectionChange={handleSelectionChange} 
+                      moveToInProgressModal={true}
+                    />
                   </Modal>
                 </div>
                 <div className="col-md-8 d-flex justify-content-end">

@@ -55,7 +55,7 @@ const TaskForm = () => {
   return (
     <div className="container my-2">
       <h3 className="mb-4">Create Task</h3>
-        <form onSubmit={handleSubmit} className="bg-light">
+        <form onSubmit={handleSubmit}>
             <div className="mb-3">
                 <label htmlFor="title" className="form-label">
                 Task Title
