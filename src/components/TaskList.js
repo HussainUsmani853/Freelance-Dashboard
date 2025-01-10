@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import clienticon from "../assets/Group 1.png";
 
-const TaskList = ({ onSelectionChange, moveToInProgressModal }) => {
+const TaskList = ({ moveToInProgressModal }) => {
   const [tasks, setTasks] = useState([]);
   const [error, setError] = useState(null);
   const [selectedTasks, setSelectedTasks] = useState([]);
@@ -41,16 +41,25 @@ const TaskList = ({ onSelectionChange, moveToInProgressModal }) => {
     };
   }, []);
 
-  // Function to handle checkbox change
-  const handleCheckboxChange = (task) => {
-    setSelectedTasks((prevSelected) => {
-      const isSelected = prevSelected.some((t) => t.id === task.id);
-      const updatedSelectedTasks = isSelected
-        ? prevSelected.filter((t) => t.id !== task.id)
-        : [...prevSelected, task];
-      onSelectionChange(updatedSelectedTasks); // Pass selected tasks to the parent
-      return updatedSelectedTasks;
-    });
+  const handleCheckboxChange = async (taskId) => {
+    try {
+      // Update task status in the database
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: "In Progress" })
+        .eq("id", taskId);
+
+      if (error) throw error;
+
+      // Update tasks in the local state
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId ? { ...task, status: "In Progress" } : task
+        )
+      );
+    } catch (err) {
+      console.error("Error updating task:", err.message);
+    }
   };
 
   return (
@@ -67,8 +76,8 @@ const TaskList = ({ onSelectionChange, moveToInProgressModal }) => {
               {moveToInProgressModal ? 
               <input
                 type="checkbox"
-                checked={selectedTasks.some((t) => t.id === task.id)}
-                onChange={() => handleCheckboxChange(task)}
+                onChange={() => handleCheckboxChange(task.id)}
+                checked={task.status === "In Progress"}
               /> : ""}
               <h5 className="mb-1">{task.title}</h5>
               <div className="d-flex mt-3">
