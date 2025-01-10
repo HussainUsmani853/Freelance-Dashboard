@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "./components/Modal";
 import TaskForm from "./components/TaskForm";
 import TaskList from "./components/TaskList";
@@ -9,9 +9,12 @@ import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import { supabase } from "./supabaseClient";
 
 function App() {
   const [visibleModal, setVisibleModal] = useState(null);
+  const [ipTasks, setIpTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const openModal = (modalId) => setVisibleModal(modalId);
   const closeModal = () => setVisibleModal(null);
@@ -19,6 +22,45 @@ function App() {
   const handleSave = (modalId) => {
     console.log(`Save clicked for ${modalId}`);
     closeModal(); // Close the modal after saving
+  };
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("tasks")
+          .select("*")
+          .eq("status", "In Progress");
+
+        if (error) throw error;
+
+        setIpTasks(data);
+      } catch (err) {
+        console.error("Error fetching tasks:", err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, [visibleModal]);
+
+  const handleDeleteTask = async (taskId) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: "Backlog" })
+        .eq("id", taskId);
+
+      if (error) throw error;
+
+      setIpTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+    } catch (err) {
+      console.error("Error deleting task:", err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,26 +79,41 @@ function App() {
               <p id="logged-time">00:00:00</p>
               <p className="fs-5">Today Tasks</p>
               <hr />
-              <ul className="inp-tasks-list">
-                  <li className="row align-items-start">
-                    <div className="col-md-8 d-flex align-items-center">
-                      <input
-                        type="checkbox"
-                        id="logging-tasks-1"
-                        className="inp-tasks-checkbox mx-2"
-                      />
-                      <label
-                        htmlFor="logging-tasks-1"
-                        className="logging-tasks-label"
-                      >
-                        Task 1
-                      </label>
-                    </div>
-                    <div className="col-md-4 d-flex justify-content-end">
-                      <img src={trashicon}></img>
-                    </div>
-                  </li>
-              </ul>
+              {/* In Progress Tasks */}
+              {loading ? (
+                <p>Loading...</p>
+              ) : (
+                <ul className="inp-tasks-list">
+                  {ipTasks.length > 0 ? (
+                    ipTasks.map((task) => (
+                      <li key={task.id} className="row align-items-start">
+                        <div className="col-md-8 d-flex align-items-center">
+                          <input
+                            type="checkbox"
+                            className="inp-tasks-checkbox mx-2"
+                          />
+                          <label
+                            htmlFor={`logging-tasks-${task.id}`}
+                            className="logging-tasks-label"
+                          >
+                            {task.title}
+                          </label>
+                        </div>
+                        <div className="col-md-4 d-flex justify-content-end">
+                          <img
+                            src={trashicon}
+                            alt="Delete"
+                            onClick={() => handleDeleteTask(task.id)}
+                            style={{ cursor: "pointer" }}
+                          />
+                        </div>
+                      </li>
+                    ))
+                  ) : (
+                    <p>No tasks in progress</p>
+                  )}
+                </ul>
+              )}
               <div className="d-flex justify-content-between mt-3">
                 <div className="col-md-4">
                   <button
@@ -72,9 +129,7 @@ function App() {
                     onClose={closeModal}
                     onSave={() => handleSave("moveToInProgress")}
                   >
-                    <TaskList
-                      moveToInProgressModal={true}
-                    />
+                    <TaskList moveToInProgressModal={true} />
                   </Modal>
                 </div>
                 <div className="col-md-8 d-flex justify-content-end">
@@ -120,7 +175,7 @@ function App() {
             </Modal>
           </div>
           {/* Task List */}
-          <TaskList />
+          {loading ? <p>Loading...</p> : <TaskList />}
         </div>
       </div>
     </div>
