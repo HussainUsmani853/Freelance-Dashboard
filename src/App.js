@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Modal from "./components/Modal";
 import TaskForm from "./components/TaskForm";
 import TaskList from "./components/TaskList";
@@ -15,6 +15,31 @@ function App() {
   const [visibleModal, setVisibleModal] = useState(null);
   const [ipTasks, setIpTasks] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedTask, setSelectedTask] = useState({});
+
+  const [time, setTime] = useState(0);
+  const timerRef = useRef(null);
+
+  const formatTime = (seconds) => {
+    const hours = String(Math.floor(seconds / 3600)).padStart(2, "0");
+    const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
+    const secs = String(seconds % 60).padStart(2, "0");
+    return `${hours}:${minutes}:${secs}`;
+  };
+
+  const startTimer = () => {
+    if (timerRef.current) return; // Prevent multiple intervals
+    timerRef.current = setInterval(() => {
+      setTime((prevTime) => prevTime + 1);
+    }, 1000);
+  };
+
+  const stopTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
 
   const openModal = (modalId) => setVisibleModal(modalId);
   const closeModal = () => setVisibleModal(null);
@@ -24,24 +49,66 @@ function App() {
     closeModal(); // Close the modal after saving
   };
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from("tasks")
-          .select("*")
-          .eq("status", "In Progress");
+  const fetchTasks = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("status", "In Progress");
 
-        if (error) throw error;
+      if (error) throw error;
 
-        setIpTasks(data);
-      } catch (err) {
-        console.error("Error fetching tasks:", err.message);
-      } finally {
-        setLoading(false);
+      setIpTasks(data);
+    } catch (err) {
+      console.error("Error fetching tasks:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectedTask = (taskId) => {
+    setSelectedTask((prevSelectedTask) => {
+      const updatedState = {
+        ...prevSelectedTask,
+        [taskId]: !prevSelectedTask[taskId], // Toggle the value
+      };
+      console.log('Updated State:', updatedState); // Log the correct updated state here
+      return updatedState;
+    });
+  };
+
+  const handleDone = async () => {
+    try {
+      const selectedTaskIds = Object.keys(selectedTask).filter(
+        (taskId) => selectedTask[taskId]
+      );
+
+      if (selectedTaskIds.length == 0) {
+        alert("Please select a task to mark as done.");
+        return;
       }
-    };
+
+      setLoading(true);
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: "Done" })
+        .in("id", selectedTaskIds);
+
+      if (error) throw error;
+
+      setIpTasks((prevTasks) =>
+        prevTasks.filter((task) => !selectedTaskIds.includes(task.id))
+      );
+      console.log('Selected Task:', selectedTask); // Log the selected task here
+    } catch (err) { 
+      console.error("Error marking task as done:", err.message);
+    } finally {      
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
     fetchTasks();
   }, [visibleModal]);
 
@@ -68,15 +135,15 @@ function App() {
       <div className="row mt-4">
         <div className="col-md-6">
           <h1>Freelance Dashboard</h1>
-          <div className="row">
+          <div className="row mt-3">
             <div className="col-md-6">
               <div id="st_stp-btn">
-                <img src={buttonimg} alt="" />
+                <img src={buttonimg} alt="" onClick={() => startTimer()} style={{cursor: "pointer"}} />
               </div>
             </div>
             <div className="col-md-6 today-logged-time-box p-3">
               <p className="fs-4 color-theme-peach">Logged Time</p>
-              <p id="logged-time">00:00:00</p>
+              <p id="logged-time">{formatTime(time)}</p>
               <p className="fs-5">Today Tasks</p>
               <hr />
               {/* In Progress Tasks */}
@@ -86,11 +153,12 @@ function App() {
                 <ul className="inp-tasks-list">
                   {ipTasks.length > 0 ? (
                     ipTasks.map((task) => (
-                      <li key={task.id} className="row align-items-start">
+                      <li key={task.id} className="row align-items-start mt-2">
                         <div className="col-md-8 d-flex align-items-center">
                           <input
                             type="checkbox"
                             className="inp-tasks-checkbox mx-2"
+                            onChange={() => handleSelectedTask(task.id)}
                           />
                           <label
                             htmlFor={`logging-tasks-${task.id}`}
@@ -137,6 +205,7 @@ function App() {
                     type="button"
                     className="btn btn-primary btn-theme-peach mx-2"
                     id="tasks-done"
+                    onClick={() => handleDone()}
                   >
                     Done
                   </button>
@@ -144,6 +213,7 @@ function App() {
                     type="button"
                     className="btn btn-primary btn-theme-black"
                     id="tasks-time-stop"
+                    onClick={stopTimer}
                   >
                     Stop
                   </button>
