@@ -18,10 +18,8 @@ function App() {
   const [selectedTask, setSelectedTask] = useState({});
 
   const [time, setTime] = useState(0);
+  const [displayTime, setDisplayTime] = useState(0);
   const timerRef = useRef(null);
-
-  const [lastLoggedTime, setLastLoggedTime] = useState({});
-
 
   const formatTime = (seconds) => {
     const hours = String(Math.floor(seconds / 3600)).padStart(2, "0");
@@ -36,9 +34,18 @@ function App() {
       return;
     }
 
+    if (!Object.keys(selectedTask).length) {
+      alert("Select at least one task to start the timer.");
+      return;
+    }
+    
     if (timerRef.current) return; // Prevent multiple intervals
     timerRef.current = setInterval(() => {
-      setTime((prevTime) => prevTime + 1);
+      setTime((prevTime) => {
+        const newTime = prevTime + 1;
+        setDisplayTime(newTime);
+        return newTime;
+      });
     }, 1000);
   };
 
@@ -124,71 +131,32 @@ function App() {
       return updatedState;
     });
   };
-
-  const calculateTimeDifference = (startTime, endTime) => {
-    // Convert "Xh Ym" format to minutes
-    const toMinutes = (time) => {
-      const [hours, minutes] = time.match(/\d+/g).map(Number);
-      return hours * 60 + minutes;
-    };
   
-    const startMinutes = toMinutes(startTime);
-    const endMinutes = toMinutes(endTime);
-    const diffMinutes = Math.max(0, endMinutes - startMinutes);
-  
-    // Convert minutes back to "Xh Ym" format
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-    return `${hours}h ${minutes}m`;
-  };
-  
-
   const logTimeForTasks = async (selectedTaskIds, formattedLoggedTime) => {
     try {
-      if (!selectedTaskIds || selectedTaskIds.length === 0) {
-        console.error("No valid task IDs provided for time logging.");
-        return;
-      }
-  
-      // Fetch existing `timeSpent` for selected tasks
       const { data, error } = await supabase
         .from("tasks")
         .select("id, timeSpent")
-        .in("id", selectedTaskIds);
+        .in("id", selectedTaskIds); // Fetch time for multiple tasks
   
-      if (error) throw error;
+      if (error && error.code !== "PGRST116") {
+        throw error; // Rethrow error if it's not "No rows returned"
+      }
   
-      // Initialize updates array
-      const updates = selectedTaskIds.map((taskId) => {
-        const task = data.find((t) => t.id === taskId);
-        const existingTimeSpent = task?.timeSpent || "0h 0m"; // Default to "0h 0m" for new tasks
-        const lastLogged = lastLoggedTime[taskId] || "0h 0m"; // Default to "0h 0m" for new tasks
-  
-        // Log only the additional time for previously logged tasks
-        const additionalTime = lastLogged === "0h 0m"
-          ? formattedLoggedTime // For new tasks, log the full time
-          : calculateTimeDifference(lastLogged, formattedLoggedTime); // For existing tasks, log the difference
-  
-        const updatedTimeSpent = addLoggedTime(existingTimeSpent, additionalTime);
-  
-        return { id: taskId, timeSpent: updatedTimeSpent };
+      const updates = (data || []).map((task) => {
+        const existingTimeSpent = task.timeSpent || "0h 0m";
+        const updatedTimeSpent = addLoggedTime(existingTimeSpent, formattedLoggedTime);
+        return { id: task.id, timeSpent: updatedTimeSpent };
       });
   
-      // Update the database with new `timeSpent` values
-      const { error: updateError } = await supabase
-        .from("tasks")
-        .upsert(updates, { onConflict: ["id"] });
+      // Update the database with the new `timeSpent` for the selected tasks
+      const { error: updateError } = await supabase.from("tasks").upsert(updates, {
+        onConflict: ["id"], // Ensure upsert is specific to tasks
+      });
   
       if (updateError) throw updateError;
   
       console.log("Time logged successfully for tasks:", updates);
-  
-      // Update `lastLoggedTime` for all selected tasks
-      const newLastLoggedTime = { ...lastLoggedTime };
-      selectedTaskIds.forEach((taskId) => {
-        newLastLoggedTime[taskId] = formattedLoggedTime; // Set current logged time
-      });
-      setLastLoggedTime(newLastLoggedTime);
     } catch (err) {
       console.error("Error logging time for tasks:", err.message);
     }
@@ -205,18 +173,19 @@ function App() {
         return;
       }
   
+      // Format the logged time into "Xh Ym" or "Xd Xh"
       const formattedLoggedTime = formatLoggedTime(time);
   
       setLoading(true);
   
-      // Log additional time since the last "Done" click
+      // Stop the timer and log time for selected tasks
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
         await logTimeForTasks(selectedTaskIds, formattedLoggedTime);
       }
   
-      // Update task status to "Done"
+      // Mark tasks as "Done"
       const { error } = await supabase
         .from("tasks")
         .update({ status: "Done" })
@@ -224,18 +193,21 @@ function App() {
   
       if (error) throw error;
   
+      // Remove tasks from the in-progress state
       setIpTasks((prevTasks) =>
         prevTasks.filter((task) => !selectedTaskIds.includes(task.id))
       );
   
+      // Reset the selected tasks state
       setSelectedTask({});
-      console.log("Selected Task:", selectedTask);
+      setTime(0);
+      console.log("Selected Task:", selectedTask); // Log the selected task here
     } catch (err) {
       console.error("Error marking tasks as done:", err.message);
     } finally {
       setLoading(false);
     }
-  };   
+  };     
 
   useEffect(() => {
     fetchTasks();
@@ -252,6 +224,7 @@ function App() {
       if (error) throw error;
 
       setIpTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+      stopTimer();
     } catch (err) {
       console.error("Error deleting task:", err.message);
     } finally {
@@ -277,7 +250,7 @@ function App() {
             </div>
             <div className="col-md-6 today-logged-time-box p-3">
               <p className="fs-4 color-theme-peach">Logged Time</p>
-              <p id="logged-time">{formatTime(time)}</p>
+              <p id="logged-time">{formatTime(displayTime)}</p>
               <p className="fs-5">Today Tasks</p>
               <hr />
               {/* In Progress Tasks */}
