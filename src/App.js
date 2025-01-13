@@ -10,6 +10,8 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import { supabase } from "./supabaseClient";
+import Timer from "./components/Timer";
+import ModalManager from "./components/ModalManager";
 
 function App() {
   const [visibleModal, setVisibleModal] = useState(null);
@@ -34,11 +36,15 @@ function App() {
       return;
     }
 
-    if (!Object.keys(selectedTask).length) {
+    const selectedTaskIds = Object.keys(selectedTask).filter(
+      (taskId) => selectedTask[taskId]
+    );
+  
+    if (selectedTaskIds.length === 0) {
       alert("Select at least one task to start the timer.");
       return;
     }
-    
+
     if (timerRef.current) return; // Prevent multiple intervals
     timerRef.current = setInterval(() => {
       setTime((prevTime) => {
@@ -130,6 +136,8 @@ function App() {
       };
       return updatedState;
     });
+
+    stopTimer();
   };
   
   const logTimeForTasks = async (selectedTaskIds, formattedLoggedTime) => {
@@ -223,6 +231,13 @@ function App() {
 
       if (error) throw error;
 
+       // Update selectedTask to reflect the task deletion
+      setSelectedTask((prevSelectedTasks) => {
+        const newSelectedTasks = { ...prevSelectedTasks };
+        delete newSelectedTasks[taskId]; // Remove the task from selection
+        return newSelectedTasks;
+      });
+
       setIpTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
       stopTimer();
     } catch (err) {
@@ -237,98 +252,25 @@ function App() {
       <div className="row mt-4">
         <div className="col-md-6">
           <h1>Freelance Dashboard</h1>
-          <div className="row mt-3">
-            <div className="col-md-6">
-              <div id="st_stp-btn">
-                <img
-                  src={buttonimg}
-                  alt=""
-                  onClick={() => startTimer()}
-                  style={{ cursor: "pointer" }}
-                />
-              </div>
-            </div>
-            <div className="col-md-6 today-logged-time-box p-3">
-              <p className="fs-4 color-theme-peach">Logged Time</p>
-              <p id="logged-time">{formatTime(displayTime)}</p>
-              <p className="fs-5">Today Tasks</p>
-              <hr />
-              {/* In Progress Tasks */}
-              {loading ? (
-                <p>Loading...</p>
-              ) : (
-                <ul className="inp-tasks-list">
-                  {ipTasks.length > 0 ? (
-                    ipTasks.map((task) => (
-                      <li key={task.id} className="row align-items-start mt-2">
-                        <div className="col-md-8 d-flex align-items-center">
-                          <input
-                            type="checkbox"
-                            className="inp-tasks-checkbox mx-2"
-                            onChange={() => handleSelectedTask(task.id)}
-                            checked={!!selectedTask[task.id]}
-                          />
-                          <label
-                            htmlFor={`logging-tasks-${task.id}`}
-                            className="logging-tasks-label"
-                          >
-                            {task.title}
-                          </label>
-                        </div>
-                        <div className="col-md-4 d-flex justify-content-end">
-                          <img
-                            src={trashicon}
-                            alt="Delete"
-                            onClick={() => handleDeleteTask(task.id)}
-                            style={{ cursor: "pointer" }}
-                          />
-                        </div>
-                      </li>
-                    ))
-                  ) : (
-                    <p>No tasks in progress</p>
-                  )}
-                </ul>
-              )}
-              <div className="d-flex justify-content-between mt-3">
-                <div className="col-md-4">
-                  <button
-                    type="button"
-                    className="add-more-tasks-log-time"
-                    onClick={() => openModal("moveToInProgress")}
-                  >
-                    <img src={plusicon} />
-                  </button>
-                  <Modal
-                    title="Move To In Progress"
-                    isVisible={visibleModal === "moveToInProgress"}
-                    onClose={closeModal}
-                    onSave={() => handleSave("moveToInProgress")}
-                  >
-                    <TaskList moveToInProgressModal={true} />
-                  </Modal>
-                </div>
-                <div className="col-md-8 d-flex justify-content-end">
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-theme-peach mx-2"
-                    id="tasks-done"
-                    onClick={() => handleDone()}
-                  >
-                    Done
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-theme-black"
-                    id="tasks-time-stop"
-                    onClick={stopTimer}
-                  >
-                    Stop
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <Timer
+            buttonimg={buttonimg}
+            startTimer={startTimer}
+            formatTime={formatTime}
+            displayTime={displayTime}
+            loading={loading}
+            ipTasks={ipTasks}
+            handleSelectedTask={handleSelectedTask}
+            selectedTask={selectedTask}
+            trashicon={trashicon}
+            handleDeleteTask={handleDeleteTask}
+            plusicon={plusicon}
+            openModal={openModal}
+            visibleModal={visibleModal}
+            closeModal={closeModal}
+            handleSave={handleSave}
+            handleDone={handleDone}
+            stopTimer={stopTimer}
+          />
         </div>
         <div className="col-md-6"></div>
       </div>
@@ -336,21 +278,16 @@ function App() {
         <div className="col-md-6">
           <div className="d-flex justify-content-between">
             <h1>Task List</h1>
-            <button
-              type="button"
-              className="add-more-tasks-log-time"
-              onClick={() => openModal("addMoreTasks")}
-            >
-              <img src={plusicon} />
-            </button>
-            <Modal
-              title="Add Task"
+            <ModalManager 
+              buttonContent={<img src={plusicon} />}
+              modalTitle={"Add Task"}
               isVisible={visibleModal === "addMoreTasks"}
-              onClose={closeModal}
+              openModal={() => openModal("addMoreTasks")}
+              closeModal={closeModal}
               onSave={() => handleSave("addMoreTasks")}
             >
               <TaskForm />
-            </Modal>
+            </ModalManager>
           </div>
           {/* Task List */}
           {loading ? <p>Loading...</p> : <TaskList />}
