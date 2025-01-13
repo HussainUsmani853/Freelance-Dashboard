@@ -79,6 +79,10 @@ ul{
   background-color: #DBDBDB !important;
 }
 
+.task-done{
+  background-color: #acffb6 !important;
+}
+
 .task-situation{
   font-size: 16px;
 }

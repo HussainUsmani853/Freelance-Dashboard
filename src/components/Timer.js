@@ -1,6 +1,6 @@
 import React from 'react';
-import Modal from './Modal';
 import TaskList from './TaskList';
+import ModalManager from './ModalManager';
 
 const Timer = ({
   buttonimg,
@@ -77,21 +77,16 @@ const Timer = ({
         )}
         <div className="d-flex justify-content-between mt-3">
           <div className="col-md-4">
-            <button
-              type="button"
-              className="add-more-tasks-log-time"
-              onClick={() => openModal("moveToInProgress")}
-            >
-              <img src={plusicon} />
-            </button>
-            <Modal
-              title="Move To In Progress"
+            <ModalManager
+              buttonContent={<img src={plusicon} />}
+              modalTitle={"Move To In Progress"}
               isVisible={visibleModal === "moveToInProgress"}
-              onClose={closeModal}
+              openModal={() => openModal("moveToInProgress")}
+              closeModal={closeModal}
               onSave={() => handleSave("moveToInProgress")}
             >
               <TaskList moveToInProgressModal={true} />
-            </Modal>
+            </ModalManager>
           </div>
           <div className="col-md-8 d-flex justify-content-end">
             <button
