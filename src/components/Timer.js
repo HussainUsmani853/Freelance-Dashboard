@@ -1,9 +1,11 @@
 import React from 'react';
+import buttonimg from "../assets/Frame 1.png";
+import trashicon from "../assets/Frame 1.svg";
+import plusicon from "../assets/Frame 3.svg";
 import TaskList from './TaskList';
 import ModalManager from './ModalManager';
 
 const Timer = ({
-  buttonimg,
   startTimer,
   formatTime,
   displayTime,
@@ -11,9 +13,7 @@ const Timer = ({
   ipTasks,
   handleSelectedTask,
   selectedTask,
-  trashicon,
   handleDeleteTask,
-  plusicon,
   openModal,
   visibleModal,
   closeModal,
@@ -21,6 +21,14 @@ const Timer = ({
   handleDone,
   stopTimer,
 }) => {
+  // const [ipTasks, setIpTasks] = useState([]);
+  // const [loading, setLoading] = useState(false);
+  // const [selectedTask, setSelectedTask] = useState({});
+
+  // const [time, setTime] = useState(0);
+  // const [displayTime, setDisplayTime] = useState(0);
+  // const timerRef = useRef(null);
+
   return (
     <div className="row mt-3">
       <div className="col-md-6">
