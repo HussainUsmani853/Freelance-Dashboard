@@ -5,7 +5,6 @@ const TaskForm = () => {
   const [task, setTask] = useState({
     title: "",
     clientName: "",
-    timeSpent: "",
     status: "In Progress", // Default status
     dueDate: "",
   });
@@ -33,7 +32,7 @@ const TaskForm = () => {
             {
               title: task.title,
               clientName: task.clientName,
-              timeSpent: task.timeSpent,
+              timeSpent: "-",
               status: task.status,
               dueDate: task.dueDate,
             },
@@ -43,7 +42,7 @@ const TaskForm = () => {
 
         console.log("Task added: ", data);
         alert("Task saved successfully");
-        setTask({ title: "", clientName: "", timeSpent: "", status: "In Progress", dueDate: "" });
+        setTask({ title: "", clientName: "", status: "In Progress", dueDate: "" });
     } catch (err) {
         console.error("Error saving task:", err.message);
         setError(err.message);
@@ -87,20 +86,6 @@ const TaskForm = () => {
             </div>
 
             <div className="mb-3">
-                <label htmlFor="timeSpent" className="form-label">
-                Time Spent
-                </label>
-                <input
-                type="text"
-                id="timeSpent"
-                name="timeSpent"
-                className="form-control"
-                value={task.timeSpent}
-                onChange={handleChange}
-                />
-            </div>
-
-            <div className="mb-3">
                 <label htmlFor="status" className="form-label">
                 Task Status
                 </label>
@@ -113,7 +98,6 @@ const TaskForm = () => {
                 >
                 <option value="In Progress">In Progress</option>
                 <option value="Backlog">Backlog</option>
-                <option value="Done">Done</option>
                 </select>
             </div>
 

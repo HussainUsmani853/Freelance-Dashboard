@@ -106,6 +106,9 @@ const TaskDashboard = () => {
         clearInterval(timerRef.current);
         timerRef.current = null;
         await logTimeForTasks(selectedTaskIds, formattedLoggedTime, supabase);
+      } else {
+        setTime(0);
+        await logTimeForTasks(selectedTaskIds, formattedLoggedTime, supabase);
       }
 
       const { error } = await supabase
