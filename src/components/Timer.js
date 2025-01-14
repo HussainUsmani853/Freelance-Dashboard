@@ -4,10 +4,10 @@ import trashicon from "../assets/Frame 1.svg";
 import plusicon from "../assets/Frame 3.svg";
 import TaskList from './TaskList';
 import ModalManager from './ModalManager';
+import { formatTime } from './helpers';
 
 const Timer = ({
   startTimer,
-  formatTime,
   displayTime,
   loading,
   ipTasks,
@@ -21,14 +21,6 @@ const Timer = ({
   handleDone,
   stopTimer,
 }) => {
-  // const [ipTasks, setIpTasks] = useState([]);
-  // const [loading, setLoading] = useState(false);
-  // const [selectedTask, setSelectedTask] = useState({});
-
-  // const [time, setTime] = useState(0);
-  // const [displayTime, setDisplayTime] = useState(0);
-  // const timerRef = useRef(null);
-
   return (
     <div className="row mt-3">
       <div className="col-md-6">

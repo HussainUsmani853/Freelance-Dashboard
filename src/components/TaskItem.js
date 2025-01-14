@@ -44,7 +44,7 @@ const TaskItem = ({ task, handleCheckboxChange, moveToInProgressModal }) => {
         </div>
         <div
           className={
-            new Date(task.dueDate) < new Date()
+            new Date(task.dueDate) < new Date() && task.status !== "Done"
               ? "text-white deadline-missed bg-danger rounded p-2"
               : `text-dark ${
                   task.status === "Done" ? "text-decoration-line-through" : ""
