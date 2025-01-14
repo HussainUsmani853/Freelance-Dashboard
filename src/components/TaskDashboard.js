@@ -5,6 +5,7 @@ import TaskForm from "./TaskForm";
 import TaskList from "./TaskList";
 import Timer from "./Timer";
 import ModalManager from "./ModalManager";
+import ProgressOverview from "./ProgressOverview";
 import plusicon from "../assets/Frame 3.svg";
 
 const TaskDashboard = () => {
@@ -182,7 +183,7 @@ const TaskDashboard = () => {
             stopTimer={stopTimer}
           />
         </div>
-        <div className="col-md-6"></div>
+        <div className="col-md-6"> <ProgressOverview /> </div>
       </div>
       <div className="row mt-4">
         <div className="col-md-6">
