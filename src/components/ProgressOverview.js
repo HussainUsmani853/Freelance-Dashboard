@@ -1,84 +1,105 @@
-import React, { useEffect } from 'react';
-import { Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { format, startOfWeek, eachDayOfInterval, addDays } from 'date-fns';
-
-// Register Chart.js components and scales
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+import React, { useState, useEffect, useRef } from "react";
+import Chart from "chart.js/auto";
+import dayjs from "dayjs";
+import { supabase } from "../supabaseClient";
 
 const ProgressOverview = () => {
-  const timeLogs = [
-    { date: '2025-01-12', hours: 3 },
-    { date: '2025-01-13', hours: 2 },
-    { date: '2025-01-14', hours: 4 },
-    { date: '2025-01-15', hours: 6 },
-    { date: '2025-01-16', hours: 5 },
-  ];
+  const [dailyLogs, setDailyLogs] = useState({});
+  const chartRef = useRef(null);
 
-  // Generate this week's dates (start from Sunday)
-  const startDate = startOfWeek(new Date(), { weekStartsOn: 0 }); // Set start of the week to Sunday
-  const weekDates = eachDayOfInterval({
-    start: startDate,
-    end: addDays(startDate, 6), // Add 6 days to get the full week
-  });
+  // Fetch Logs
+  const fetchLogs = async () => {
+    try {
+      const startOfWeek = dayjs().startOf("week").format("YYYY-MM-DD");
+      const endOfWeek = dayjs().endOf("week").format("YYYY-MM-DD");
 
-  // Fix: Ensure consistent formatting for all dates
-  const timeByDay = weekDates.map((date) => {
-    const dateString = format(date, 'yyyy-MM-dd'); // Format the date for comparison
-    const totalHours = timeLogs
-      .filter((log) => log.date === dateString) // Compare formatted dates
-      .reduce((sum, log) => sum + log.hours, 0); // Sum hours for the day
-    return { day: format(date, 'EEE'), hours: totalHours };
-  });
+      const { data, error } = await supabase
+        .from("daily_logs")
+        .select("date, hours_logged")
+        .gte("date", startOfWeek)
+        .lte("date", endOfWeek);
 
-  // Debugging Output
+      if (error) throw error;
+
+      const logs = data.reduce((acc, log) => {
+        const dayName = dayjs(log.date).format("dddd");
+        acc[dayName] = log.hours_logged;
+        return acc;
+      }, {
+        Sunday: 0,
+        Monday: 0,
+        Tuesday: 0,
+        Wednesday: 0,
+        Thursday: 0,
+        Friday: 0,
+        Saturday: 0,
+      });
+
+      setDailyLogs(logs);
+    } catch (err) {
+      console.error("Error fetching logs:", err.message);
+    }
+  };
+
   useEffect(() => {
-    console.log('Week Dates:', weekDates.map((d) => format(d, 'yyyy-MM-dd')));
-    console.log('Time by Day:', timeByDay);
-  }, [timeByDay]);
+    fetchLogs();
+  }, []);
 
-  const chartData = {
-    labels: timeByDay.map((entry) => entry.day), // Labels are the days of the week
-    datasets: [
-      {
-        label: 'Hours Logged',
-        data: timeByDay.map((entry) => entry.hours), // Data is the total hours for each day
-        backgroundColor: 'rgba(75, 192, 192, 0.4)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-      },
-    ],
-  };
+  // Render Chart
+  useEffect(() => {
+    if (chartRef.current) {
+      const ctx = chartRef.current.getContext("2d");
 
-  const chartOptions = {
-    responsive: true,
-    plugins: {
-      legend: { display: true },
-      title: { display: true, text: 'Weekly Progress Overview' },
-    },
-    scales: {
-      x: {
-        title: { display: true, text: 'Days' },
-      },
-      y: {
-        title: { display: true, text: 'Hours' },
-        beginAtZero: true,
-      },
-    },
-  };
+      if (window.myChart) window.myChart.destroy();
+
+      window.myChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+          ],
+          datasets: [
+            {
+              label: "Hours Logged",
+              data: [
+                dailyLogs.Sunday,
+                dailyLogs.Monday,
+                dailyLogs.Tuesday,
+                dailyLogs.Wednesday,
+                dailyLogs.Thursday,
+                dailyLogs.Friday,
+                dailyLogs.Saturday,
+              ],
+              backgroundColor: "rgba(75, 192, 192, 0.5)",
+              borderColor: "rgba(75, 192, 192, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1,
+              },
+            },
+          },
+        },
+      });
+    }
+  }, [dailyLogs]);
 
   return (
     <div>
       <h2>Progress Overview</h2>
-      <Bar data={chartData} options={chartOptions} />
+      <canvas ref={chartRef}></canvas>
     </div>
   );
 };
