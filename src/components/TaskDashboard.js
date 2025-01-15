@@ -5,8 +5,8 @@ import TaskForm from "./TaskForm";
 import TaskList from "./TaskList";
 import Timer from "./Timer";
 import ModalManager from "./ModalManager";
-import ProgressOverview from "./ProgressOverview";
 import plusicon from "../assets/Frame 3.svg";
+import ProgressOverview from "./ProgressOverview";
 
 const TaskDashboard = () => {
   const [visibleModal, setVisibleModal] = useState(null);
@@ -107,6 +107,31 @@ const TaskDashboard = () => {
         clearInterval(timerRef.current);
         timerRef.current = null;
         await logTimeForTasks(selectedTaskIds, formattedLoggedTime, supabase);
+
+        const dayName = new Date().toLocaleDateString("en-US", {weekday: "long"});
+        const shortDayName = dayName.substring(0, 3).toLowerCase();
+        try {
+          // Fetch the existing data
+          const {data, error} = await supabase
+            .from("weekly_time_logs")
+            .select(shortDayName)
+            .eq('id', 2)
+            .single();
+          
+          if (error) throw error;
+
+          const existingTime = data[shortDayName] || 0;
+          const updatedTime = existingTime + time;
+
+          const { updateError } = await supabase
+            .from("weekly_time_logs")
+            .update({ [shortDayName]: updatedTime })
+            .eq("id", 2);
+
+          if (updateError) throw updateError;
+        } catch (err) {
+          console.error("Error logging weekly time:", err.message);
+        }
       } else {
         setTime(0);
         await logTimeForTasks(selectedTaskIds, formattedLoggedTime, supabase);
@@ -136,6 +161,43 @@ const TaskDashboard = () => {
   useEffect(() => {
     fetchTasks();
   }, [visibleModal]);
+
+  useEffect(() => {
+    // Function to reset the data
+    const resetWeeklyTimeLogs = async () => {
+      const { data, error } = await supabase
+        .from('weekly_time_logs')
+        .update({ 
+          mon: 0, 
+          tue: 0, 
+          wed: 0, 
+          thu: 0, 
+          fri: 0, 
+          sat: 0, 
+          sun: 0, 
+        })
+        .eq('id', 2);
+  
+      if (error) console.error("Error resetting time:", error);
+      else console.log("Time logs reset successfully");
+    };
+  
+    // Check if it's Monday and if the reset hasn't been done today
+    const checkAndReset = () => {
+      const today = new Date();
+      
+      // Check if today is Monday (1 = Monday) and if the reset hasn't been done
+      if (today.getDay() === 3 && !localStorage.getItem('mondayResetDone')) {
+        resetWeeklyTimeLogs();
+  
+        // Set a flag in localStorage to indicate the reset has been done for this Monday
+        localStorage.setItem('mondayResetDone', 'true');
+      }
+    };
+  
+    // Run check once at the start
+    checkAndReset();
+  })
 
   const handleDeleteTask = async (taskId) => {
     setLoading(true);
@@ -183,7 +245,7 @@ const TaskDashboard = () => {
             stopTimer={stopTimer}
           />
         </div>
-        <div className="col-md-6"> <ProgressOverview /> </div>
+        <div className="col-md-6"><ProgressOverview visibleModal={visibleModal} /></div>
       </div>
       <div className="row mt-4">
         <div className="col-md-6">

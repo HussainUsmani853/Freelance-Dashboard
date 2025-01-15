@@ -1,105 +1,81 @@
-import React, { useState, useEffect, useRef } from "react";
-import Chart from "chart.js/auto";
-import dayjs from "dayjs";
+import React, { useEffect, useState } from "react";
+import { Bar } from "react-chartjs-2";
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js";
 import { supabase } from "../supabaseClient";
 
-const ProgressOverview = () => {
-  const [dailyLogs, setDailyLogs] = useState({});
-  const chartRef = useRef(null);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-  // Fetch Logs
-  const fetchLogs = async () => {
-    try {
-      const startOfWeek = dayjs().startOf("week").format("YYYY-MM-DD");
-      const endOfWeek = dayjs().endOf("week").format("YYYY-MM-DD");
+const ProgressOverview = ( visibleModal ) => {
+  const [data, setData] = useState({
+    labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    datasets: [
+      {
+        label: "Hours Logged",
+        data: [0, 0, 0, 0, 0, 0, 0], // Default data
+        backgroundColor: "#8FFFBA",
+        borderColor: "#DFDFDF",
+        borderWidth: 1,
+      },
+    ],
+  });
 
-      const { data, error } = await supabase
-        .from("daily_logs")
-        .select("date, hours_logged")
-        .gte("date", startOfWeek)
-        .lte("date", endOfWeek);
+  const fetchLoggedHours = async () => {
+    const { data: timeLogs, error } = await supabase.from("weekly_time_logs").select("*").eq("id", 2);
 
-      if (error) throw error;
-
-      const logs = data.reduce((acc, log) => {
-        const dayName = dayjs(log.date).format("dddd");
-        acc[dayName] = log.hours_logged;
-        return acc;
-      }, {
-        Sunday: 0,
-        Monday: 0,
-        Tuesday: 0,
-        Wednesday: 0,
-        Thursday: 0,
-        Friday: 0,
-        Saturday: 0,
-      });
-
-      setDailyLogs(logs);
-    } catch (err) {
-      console.error("Error fetching logs:", err.message);
+    if (error) {
+      console.error("Error fetching time logs:", error);
+      return;
     }
+
+    // Extracting and converting seconds to hours
+    const { sun, mon, tue, wed, thu, fri, sat } = timeLogs[0];
+    const convertedData = [
+      (sun / 3600).toFixed(2),
+      (mon / 3600).toFixed(2),
+      (tue / 3600).toFixed(2),
+      (wed / 3600).toFixed(2),
+      (thu / 3600).toFixed(2),
+      (fri / 3600).toFixed(2),
+      (sat / 3600).toFixed(2),
+    ];
+
+    setData((prevData) => ({
+      ...prevData,
+      datasets: [
+        {
+          ...prevData.datasets[0],
+          data: convertedData,
+        },
+      ],
+    }));
   };
 
   useEffect(() => {
-    fetchLogs();
-  }, []);
+    fetchLoggedHours();
+  }, [visibleModal]);
 
-  // Render Chart
-  useEffect(() => {
-    if (chartRef.current) {
-      const ctx = chartRef.current.getContext("2d");
-
-      if (window.myChart) window.myChart.destroy();
-
-      window.myChart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: [
-            "Sunday",
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-          ],
-          datasets: [
-            {
-              label: "Hours Logged",
-              data: [
-                dailyLogs.Sunday,
-                dailyLogs.Monday,
-                dailyLogs.Tuesday,
-                dailyLogs.Wednesday,
-                dailyLogs.Thursday,
-                dailyLogs.Friday,
-                dailyLogs.Saturday,
-              ],
-              backgroundColor: "rgba(75, 192, 192, 0.5)",
-              borderColor: "rgba(75, 192, 192, 1)",
-              borderWidth: 1,
-            },
-          ],
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top",
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: "Hours",
         },
-        options: {
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: {
-                stepSize: 1,
-              },
-            },
-          },
-        },
-      });
-    }
-  }, [dailyLogs]);
+      },
+    },
+  };
 
   return (
     <div>
       <h2>Progress Overview</h2>
-      <canvas ref={chartRef}></canvas>
+      <Bar data={data} options={options} id="po_bar" className="mt-4" />
     </div>
   );
 };
