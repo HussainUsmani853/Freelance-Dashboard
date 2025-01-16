@@ -111,7 +111,6 @@ const TaskDashboard = () => {
         const dayName = new Date().toLocaleDateString("en-US", {weekday: "long"});
         const shortDayName = dayName.substring(0, 3).toLowerCase();
         try {
-          // Fetch the existing data
           const {data, error} = await supabase
             .from("weekly_time_logs")
             .select(shortDayName)
@@ -163,7 +162,6 @@ const TaskDashboard = () => {
   }, [visibleModal]);
 
   useEffect(() => {
-    // Function to reset the data
     const resetWeeklyTimeLogs = async () => {
       const { data, error } = await supabase
         .from('weekly_time_logs')
@@ -181,21 +179,15 @@ const TaskDashboard = () => {
       if (error) console.error("Error resetting time:", error);
       else console.log("Time logs reset successfully");
     };
-  
-    // Check if it's Monday and if the reset hasn't been done today
+
     const checkAndReset = () => {
       const today = new Date();
-      
-      // Check if today is Monday (1 = Monday) and if the reset hasn't been done
       if (today.getDay() === 3 && !localStorage.getItem('mondayResetDone')) {
         resetWeeklyTimeLogs();
-  
-        // Set a flag in localStorage to indicate the reset has been done for this Monday
         localStorage.setItem('mondayResetDone', 'true');
       }
     };
   
-    // Run check once at the start
     checkAndReset();
   })
 
