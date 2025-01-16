@@ -22,8 +22,8 @@ Freelancers often juggle multiple projects, deadlines, and goals. This dashboard
 
 ## Tech Stack
 
-- **Frontend**: [React.js, Bootstrap]
-- **BaaS**: [Supabase]
+- **Frontend**: React.js, Bootstrap
+- **BaaS**: Supabase
 
 ---
 
